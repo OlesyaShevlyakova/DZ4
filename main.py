@@ -1,9 +1,9 @@
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, ConversationHandler, MessageHandler, filters
 import logging
+from time import sleep
 from secrets import TOKEN
 from telegram import Update, ReplyKeyboardMarkup
-
-
+from currency import make_magic
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(message)s',
@@ -14,6 +14,9 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 DATE_CURRENCY, CHECK_DATE, SHOW_RESULT = range(3)
+
+our_currency = ""
+our_date = ""
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -36,15 +39,21 @@ async def date_currency(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
     logger.info(f"{user.first_name} selected {update.message.text}")
     logger.info(f"{user.first_name} inputs date")
-    await update.message.reply_text("Напишите дату в формате YYYY-MM-DD, например, 2023-01-05")
+    global our_currency
+    our_currency = update.message.text
+    await update.message.reply_text("Напишите дату в формате DD.MM.YYYY, например, 23.01.2005")
     return CHECK_DATE
 
 async def show_result(update: Update, context: ContextTypes.DEFAULT_TYPE):
     "Вывод результата поиска"
     user = update.message.from_user
     logger.info(f"{user.first_name} selected {update.message.text}")
+    global our_date
+    our_date = update.message.text
     logger.info(f"{user.first_name} shows result")
-    await update.message.reply_text("Результаты поиска")
+    await update.message.reply_text(make_magic(our_date, our_currency))
+    sleep(1)
+    await update.message.reply_text('Для нового запроса выберите новую валюту. Для завершения нажмите /exit')
 
 
 async def exit_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -63,7 +72,7 @@ if __name__ == "__main__":
         entry_points=[CommandHandler("start", start)],
         states={
             DATE_CURRENCY: [MessageHandler(filters.Regex("^(USD|EUR|CNY)$"), date_currency)],
-            CHECK_DATE: [MessageHandler(filters.Regex("^(19|20)\d{2}-(0[1-9]|1[1,2])-(0[1-9]|[12][0-9]|3[01])$"),
+            CHECK_DATE: [MessageHandler(filters.Regex("^(0[1-9]|[12][0-9]|3[01]).(0[1-9]|1[1,2]).(19|20)\d{2}$"),
                                          show_result),
                           MessageHandler(filters.Regex("^((?!exit).)*$"),
                                          date_currency)
